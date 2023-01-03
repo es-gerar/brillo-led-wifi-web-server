@@ -1,27 +1,24 @@
 
-
-/* https://www.GERAR.es
-
-Programa para controlar un LED, Servo o Salida PWM con servidor web para ESP8266 y ESP32
-
+/* https://www.GERAR.es 
+ *  Madrid 2023
+Script para controlar Salida PWM (LED, Servo, Etc)
+con Slider en una página WEB en Servidor WEB WEBSERVER para ESP32 y ESP8266
 */
 
-
-#if defined(ESP32)
+//Librerías necesarias
+#ifdef ESP32
 #include <WiFi.h>
+#include <AsyncTCP.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
 #endif
+#include "ESPAsyncWebServer.h"
 
+const char* ssid = "NOMBRE_RED_WIFI";
+const char* password = "CONTRASEÑA_RED_WIFI";
 
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-
-
-const char* ssid = "Tigre Banana";
-const char* password = "nlrdpdlna!NLRDPDLNA!";
-
-const int led_pin = LED_BUILTIN;
+const int led_pin = LED_BUILTIN; //Pin PWM a controlar
 String slider_value = "0";
 
 const int frequency = 5000;
@@ -112,19 +109,21 @@ String processor(const String& var){
 void setup(){
   Serial.begin(115200);
 
-  //Manejo de PWM en ESP32 ////////////////////////////
-  ledcSetup(led_channel, frequency, resolution);
-  ledcAttachPin(led_pin, led_channel);
-  ledcWrite(led_channel, slider_value.toInt());
+mueveSlider(slider_value.toInt());
+
+
+
 
 //////////////////////////////// CONEXIÓN RED WI-FI //
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    Serial.println("Connecting...");
+    Serial.println("Conectando ESP a red Wi-Fi...");
   }
 
   Serial.println(WiFi.localIP());
+  
+  Serial.println("Creando Servicios WEB SERVER...");
 
   // WEBSERVER REQUESTS //////////////////////////////////////
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -138,10 +137,10 @@ void setup(){
       slider_value = message;
       int valorDelSlider=slider_value.toInt();
       int valorDelSliderAlReves=map (valorDelSlider,0,255,255,0);
-      ledcWrite(led_channel, valorDelSliderAlReves);
+      mueveSlider(valorDelSliderAlReves);
     }
     else {
-      message = "No message sent";
+      message = "No hubo mensaje";
     }
     Serial.println(message);
     request->send(200, "text/plain", "OK");
@@ -152,4 +151,15 @@ void setup(){
   
 void loop() {
   
+}
+
+void mueveSlider(int valorEnSlider){
+#ifdef ESP32
+  //Manejo de PWM en ESP32 ////////////////////////////
+  ledcSetup(led_channel, frequency, resolution);
+  ledcAttachPin(led_pin, led_channel);
+  ledcWrite(led_channel, valorEnSlider);
+#elif defined(ESP8266)
+  analogWrite (led_pin, valorEnSlider);
+#endif
 }
